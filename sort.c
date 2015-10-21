@@ -4,6 +4,9 @@
 
 #include "mpi.h"
 
+#define SIZE 16
+#define MAX_NUM 1000
+
 int main(int argc, char* argv[]) {
 	// for each dimension:
 		// find world pivot
@@ -34,9 +37,10 @@ int main(int argc, char* argv[]) {
     	MPI_Comm_size(comms[i], &world_size[i]);
     	MPI_Comm_rank(comms[i], &rank[i]);
 
+		// pivot[i] = proc_id;
+		int pivot_delta = MAX_NUM >> (i + 1);
+		pivot[i] = (i == 0 ? MAX_NUM / 2 : pivot[i - 1] + (rank[i - 1] / world_size[i] ? pivot_delta : -pivot_delta));
 
-
-    	pivot[i] = proc_id;
     	MPI_Bcast(&pivot[i], 1, MPI_INT, 0, comms[i]);
 
     	int group_size = world_size[i] / 2;
