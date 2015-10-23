@@ -99,22 +99,32 @@ int main(int argc, char* argv[]) {
             // sort data increasing order
             qsort(r_nums, next_open, sizeof(int), intIncCmp);
             // from right, go left until find smallest element greater than pivot
+            int send_idx = next_open;
+            while (send_idx > 0 && r_nums[send_idx - 1] > pivot[i]) { send_idx--; }
             // send to partner
             // receive from partner
-            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\t", i, proc_id, rank[i], pivot[i], group_id[i], partner[i]);
-            printf("\tINC sorted values: ", proc_id);
+            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\tsplit at %d.", i, proc_id, rank[i], pivot[i], group_id[i], partner[i], r_nums[send_idx]);
+            printf("\tINC sorted values: ");
             printArray(r_nums, next_open);
+            printf("\n");
+            printf("dim: %d\tp_id: %d\tvalues to send: ", i, proc_id);
+            printArray(&r_nums[send_idx], next_open - send_idx);
             printf("\n");
         }
         else if (group_id[i] == 1) {
             // sort data decreasing order
             qsort(r_nums, next_open, sizeof(int), intDecCmp);
             // from right, go left until find last element less than or equal to pivot
+            int send_idx = next_open;
+            while (send_idx > 0 && r_nums[send_idx - 1] <= pivot[i]) { send_idx--; }
             // receive from partner
             // send to partner
-            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\t", i, proc_id, rank[i], pivot[i], group_id[i], partner[i]);
-            printf("\tDEC sorted values: ", proc_id);
+            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\tsplit at %d.", i, proc_id, rank[i], pivot[i], group_id[i], partner[i], r_nums[send_idx]);
+            printf("\tDEC sorted values: ");
             printArray(r_nums, next_open);
+            printf("\n");
+            printf("dim: %d\tp_id: %d\tvalues to send: ", i, proc_id);
+            printArray(&r_nums[send_idx], next_open - send_idx);
             printf("\n");
         }
         else { printf("\n\nERROR\n\n"); return 1; }
