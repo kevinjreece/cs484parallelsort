@@ -3,6 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include <mpi.h>
+#include <string.h>
 
 #define SIZE 32
 #define MAX_NUM 1000
@@ -118,8 +119,13 @@ int main(int argc, char* argv[]) {
             MPI_Probe(partner[i], 0, comms[i], &status);
             MPI_Get_count(&status, MPI_INT, &message_size);
             MPI_Recv(temp_nums, message_size, MPI_INT, partner[i], 0, comms[i], &status);
-            printf("dim: %d\tp_id: %d\tvalues received:\t", i, proc_id);
+            printf("dim: %d\tp_id: %d\treceived %d values: ", i, proc_id, message_size);
             printArray(temp_nums, message_size);
+            printf("\n\n");
+            memcpy(&r_nums[send_idx], temp_nums, message_size * sizeof(int));
+            next_open = send_idx + message_size;
+            printf("dim: %d\tp_id: %d\tznew array: ", i, proc_id);
+            printArray(r_nums, next_open);
             printf("\n");
         }
         else if (group_id[i] == 1) {
@@ -143,15 +149,27 @@ int main(int argc, char* argv[]) {
             MPI_Get_count(&status, MPI_INT, &message_size);
             MPI_Recv(temp_nums, message_size, MPI_INT, partner[i], 0, comms[i], &status);
             MPI_Send(&r_nums[send_idx], next_open - send_idx, MPI_INT, partner[i], 0, comms[i]);
-            printf("dim: %d\tp_id: %d\tvalues received: ", i, proc_id);
+            printf("dim: %d\tp_id: %d\treceived %d values: ", i, proc_id, message_size);
             printArray(temp_nums, message_size);
+            printf("\n\n");
+            memcpy(&r_nums[send_idx], temp_nums, message_size * sizeof(int));
+            next_open = send_idx + message_size;
+            printf("dim: %d\tp_id: %d\tznew array: ", i, proc_id);
+            printArray(r_nums, next_open);
             printf("\n");
         }
         else { printf("\n\nERROR\n\n"); return 1; }
 
+
+
 	    MPI_Comm_split(comms[i], group_id[i], rank[i], &comms[i + 1]);
 
 	}
+
+    qsort(r_nums, next_open, sizeof(int), intIncCmp);
+    printf("final -> p_id: %d\tfinal array: ", proc_id);
+    printArray(r_nums, next_open);
+    printf("\n");
 
     MPI_Finalize();
 
