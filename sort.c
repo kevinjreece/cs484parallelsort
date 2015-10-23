@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-
-#include "mpi.h"
+#include <mpi.h>
 
 #define SIZE 32
 #define MAX_NUM 1000
+
+MPI_Status status;
 
 void fillWithRandomNums(int* a, int size) {
     int i;
@@ -55,7 +56,8 @@ int main(int argc, char* argv[]) {
     int pivot[dims];
     int group_id[dims];
     int partner[dims];
-    int* r_nums = malloc(SIZE * sizeof(int));;
+    int* r_nums = malloc(SIZE * sizeof(int));
+    int* temp_nums = malloc(SIZE * sizeof(int));
 
     fillWithRandomNums(r_nums, next_open);
 
@@ -110,6 +112,15 @@ int main(int argc, char* argv[]) {
             printf("dim: %d\tp_id: %d\tvalues to send: ", i, proc_id);
             printArray(&r_nums[send_idx], next_open - send_idx);
             printf("\n");
+            MPI_Send(&r_nums[send_idx], next_open - send_idx, MPI_INT, partner[i], 0, comms[i]);
+            int r;
+            int message_size;
+            MPI_Probe(partner[i], 0, comms[i], &status);
+            MPI_Get_count(&status, MPI_INT, &message_size);
+            MPI_Recv(temp_nums, message_size, MPI_INT, partner[i], 0, comms[i], &status);
+            printf("dim: %d\tp_id: %d\tvalues received:\t", i, proc_id);
+            printArray(temp_nums, message_size);
+            printf("\n");
         }
         else if (group_id[i] == 1) {
             // sort data decreasing order
@@ -125,6 +136,15 @@ int main(int argc, char* argv[]) {
             printf("\n");
             printf("dim: %d\tp_id: %d\tvalues to send: ", i, proc_id);
             printArray(&r_nums[send_idx], next_open - send_idx);
+            printf("\n");
+            int r;
+            int message_size;
+            MPI_Probe(partner[i], 0, comms[i], &status);
+            MPI_Get_count(&status, MPI_INT, &message_size);
+            MPI_Recv(temp_nums, message_size, MPI_INT, partner[i], 0, comms[i], &status);
+            MPI_Send(&r_nums[send_idx], next_open - send_idx, MPI_INT, partner[i], 0, comms[i]);
+            printf("dim: %d\tp_id: %d\tvalues received: ", i, proc_id);
+            printArray(temp_nums, message_size);
             printf("\n");
         }
         else { printf("\n\nERROR\n\n"); return 1; }
