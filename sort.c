@@ -5,7 +5,7 @@
 
 #include "mpi.h"
 
-#define SIZE 16
+#define SIZE 32
 #define MAX_NUM 1000
 
 void fillWithRandomNums(int* a, int size) {
@@ -23,8 +23,12 @@ void printArray(int* a, int size) {
     }
 }
 
-int intCmp(const void *a, const void *b) {
+int intIncCmp(const void *a, const void *b) {
     return *(int*)a - *(int*)b;
+}
+
+int intDecCmp(const void *a, const void *b) {
+    return *(int*)b - *(int*)a;
 }
 
 int main(int argc, char* argv[]) {
@@ -43,6 +47,7 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &n_proc);
     MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
 
+    int next_open = SIZE / n_proc;
     int dims = log2(n_proc);
     MPI_Comm comms[dims + 1];
     int rank[dims];
@@ -52,13 +57,13 @@ int main(int argc, char* argv[]) {
     int partner[dims];
     int* r_nums = malloc(SIZE * sizeof(int));;
 
-    fillWithRandomNums(r_nums, SIZE);
+    fillWithRandomNums(r_nums, next_open);
 
     // printf("process %d orignal values: \t", proc_id);
     // printArray(r_nums, SIZE);
     // printf("\n");
 
-    qsort(r_nums, SIZE, sizeof(int), intCmp);
+    // qsort(r_nums, next_open, sizeof(int), intIncCmp);
 
     // printf("process %d sorted values: \t", proc_id);
     // printArray(r_nums, SIZE);
@@ -68,22 +73,51 @@ int main(int argc, char* argv[]) {
 
     int i;
     for (i = 0; i < dims; i++) {
+        /* get data for world */
     	MPI_Comm_size(comms[i], &world_size[i]);
     	MPI_Comm_rank(comms[i], &rank[i]);
+        int group_size = world_size[i] / 2;
 
+        if (proc_id == 1) {
+            printf("\ndim: %d\n", i);
+        }
+
+        /* get pivot */
 		// pivot[i] = proc_id;
 		int pivot_delta = MAX_NUM >> (i + 1);// value to be added or subtracted from previous pivot
 		pivot[i] = (i == 0 ? MAX_NUM / 2 : pivot[i - 1] + (rank[i - 1] / world_size[i] ? pivot_delta : -pivot_delta));//
 
-    	MPI_Bcast(&pivot[i], 1, MPI_INT, 0, comms[i]);
+        /* broadcast pivot to world (if needed) */
+        // MPI_Bcast(&pivot[i], 1, MPI_INT, 0, comms[i]);
 
-    	int group_size = world_size[i] / 2;
+        /* figure out partner and group */
+        group_id[i] = rank[i] < group_size ? 0 : 1;
+        partner[i] = rank[i] + (group_id[i] == 0 ? group_size : -group_size);
 
-	    group_id[i] = rank[i] < group_size ? 0 : 1;
-	    partner[i] = rank[i] + (group_id[i] == 0 ? group_size : -group_size);
-
-    	printf("dim: %d\tid: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\n", i, proc_id, rank[i], pivot[i], group_id[i], partner[i]);
-     
+        /* decide what data to send to partner and exchange data */
+        if (group_id[i] == 0) {
+            // sort data increasing order
+            qsort(r_nums, next_open, sizeof(int), intIncCmp);
+            // from right, go left until find smallest element greater than pivot
+            // send to partner
+            // receive from partner
+            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\t", i, proc_id, rank[i], pivot[i], group_id[i], partner[i]);
+            printf("\tINC sorted values: ", proc_id);
+            printArray(r_nums, next_open);
+            printf("\n");
+        }
+        else if (group_id[i] == 1) {
+            // sort data decreasing order
+            qsort(r_nums, next_open, sizeof(int), intDecCmp);
+            // from right, go left until find last element less than or equal to pivot
+            // receive from partner
+            // send to partner
+            printf("dim: %d\tp_id: %d\trank: %d\tpivot: %d\tgroup: %d\tpartner: %d\t", i, proc_id, rank[i], pivot[i], group_id[i], partner[i]);
+            printf("\tDEC sorted values: ", proc_id);
+            printArray(r_nums, next_open);
+            printf("\n");
+        }
+        else { printf("\n\nERROR\n\n"); return 1; }
 
 	    MPI_Comm_split(comms[i], group_id[i], rank[i], &comms[i + 1]);
 
